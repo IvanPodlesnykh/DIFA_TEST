@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">AndroidIsCool</string>
+    <string name="get_info">Получить информацию с сервера</string>
+    <string name="call_camera">Вызов камеры</string>
+</resources>
