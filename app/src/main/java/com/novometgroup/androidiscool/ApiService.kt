@@ -20,7 +20,7 @@ const val baseUrl = "http://172.16.30.36:8000/"
 
 interface ApiService {
     @GET("/api/motor/index")
-    fun getMotorDetails() : Call<ArrayList<MotorDetails>>;
+    fun getMotorDetails() : Call<ArrayList<MotorDetails>>
 }
 
 fun getApiService(): ApiService {

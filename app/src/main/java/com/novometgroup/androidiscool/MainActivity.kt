@@ -73,9 +73,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         //Отправка файла на сервер
+        val filePath = "/storage/emulated/0/Pictures/DIFA/"
+
         val fileName = "1707380393870.jpeg"
 
-        val file = File("/storage/emulated/0/Pictures/DIFA/$fileName")
+        val file = File("$filePath$fileName")
 
         val requestFile = RequestBody.create(MultipartBody.FORM, file)
 
