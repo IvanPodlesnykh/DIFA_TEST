@@ -15,6 +15,12 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.ResponseBody
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -52,7 +58,8 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
 
 
         findViewById<Button>(R.id.takePhoto).setOnClickListener {
-            val outputFileOptions = ImageCapture.OutputFileOptions.Builder(File(photoPath + File.separator + System.currentTimeMillis() + ".jpeg")).build()
+            val fileName = System.currentTimeMillis().toString() + ".jpeg"
+            val outputFileOptions = ImageCapture.OutputFileOptions.Builder(File(photoPath + File.separator + fileName)).build()
             imageCapture.takePicture(outputFileOptions, cameraExecutor, object : OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                     Log.d("PHOTO", "Фото успешно сохранено в $photoPath")
@@ -61,6 +68,7 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
                             "Фото сохранено!",
                             Toast.LENGTH_SHORT).show()
                     }
+                    makeRequest(prepareFile(fileName))
                 }
 
                 override fun onError(exception: ImageCaptureException) {
@@ -90,5 +98,28 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
         cameraProvider.unbindAll()
 
         var camera = cameraProvider.bindToLifecycle(this, cameraSelector, imageCapture, preview)
+    }
+
+    private fun prepareFile(name: String): MultipartBody.Part {
+        val file = File("/storage/emulated/0/Pictures/DIFA/$name")
+
+        val requestFile = RequestBody.create(MultipartBody.FORM, file)
+
+        return MultipartBody.Part.createFormData("image", file.name, requestFile)
+    }
+
+    private fun makeRequest(body: MultipartBody.Part) {
+        val uploadService = getUploadService()
+        uploadService.postImage(body).enqueue(object : Callback<ResponseBody> {
+            override fun onResponse(
+                call: Call<ResponseBody>,
+                response: Response<ResponseBody>
+            ) {
+            }
+
+            override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+            }
+
+        })
     }
 }

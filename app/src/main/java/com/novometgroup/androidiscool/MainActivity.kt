@@ -1,17 +1,23 @@
 package com.novometgroup.androidiscool
 
 import android.content.Intent
+import android.database.Observable
 import android.hardware.Camera
 import android.os.Bundle
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import com.novometgroup.androidiscool.databinding.ActivityMainBinding
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
@@ -26,10 +32,8 @@ class MainActivity : AppCompatActivity() {
 
         binding.progressBar.isVisible = false
 
-        //binding.imageView.setImageResource()
-
         //Вызов активити камеры
-        findViewById<Button>(R.id.callCamera).setOnClickListener {
+        binding.callCamera.setOnClickListener {
             val intent = Intent(this, CameraActivity::class.java)
 
             startActivity(intent)
@@ -39,14 +43,11 @@ class MainActivity : AppCompatActivity() {
         //Обработка запроса на сервер
         val apiService = getApiService()
 
-        val responseTextView = findViewById<TextView>(R.id.responseTextView)
-        val getButton = findViewById<Button>(R.id.get_info)
-
-        getButton.setOnClickListener {
+        binding.getInfo.setOnClickListener {
 
             binding.progressBar.isVisible = true
 
-            responseTextView.text = ""
+            binding.responseTextView.text = ""
 
             apiService.getMotorDetails().enqueue(
                 object: Callback<ArrayList<MotorDetails>> {
@@ -56,14 +57,14 @@ class MainActivity : AppCompatActivity() {
                     ) {
                         val motorDetails = response.body()
                         if (motorDetails != null) {
-                            responseTextView.text = "${motorDetails[2].code} : ${motorDetails[2].name}"
+                            binding.responseTextView.text = "${motorDetails[2].code} : ${motorDetails[2].name}"
                         }
 
                         binding.progressBar.isVisible = false
                     }
 
                     override fun onFailure(call: Call<ArrayList<MotorDetails>>, t: Throwable) {
-                        responseTextView.text = t.toString()
+                        binding.responseTextView.text = t.toString()
                         binding.progressBar.isVisible = false
                     }
 
@@ -71,5 +72,38 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
+        //Отправка файла на сервер
+        val fileName = "1707380393870.jpeg"
+
+        val file = File("/storage/emulated/0/Pictures/DIFA/$fileName")
+
+        val requestFile = RequestBody.create(MultipartBody.FORM, file)
+
+        val body = MultipartBody.Part.createFormData("image", file.name, requestFile)
+
+        val uploadService = getUploadService()
+
+        binding.postImage.setOnClickListener {
+
+            binding.progressBar.isVisible = true
+
+            binding.responseTextView.text = ""
+
+            uploadService.postImage(body).enqueue(object : Callback<ResponseBody>{
+                override fun onResponse(
+                    call: Call<ResponseBody>,
+                    response: Response<ResponseBody>
+                ) {
+                    binding.responseTextView.text = response.toString()
+                    binding.progressBar.isVisible = false
+                }
+
+                override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                    binding.responseTextView.text = t.toString()
+                    binding.progressBar.isVisible = false
+                }
+
+            })
+        }
     }
 }
