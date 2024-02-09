@@ -15,6 +15,7 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import okhttp3.MediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
@@ -45,6 +46,7 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
         cameraView = findViewById(R.id.camera_view)
 
         imageCapture = ImageCapture.Builder()
+            .setFlashMode(ImageCapture.FLASH_MODE_ON)
             .build()
 
         val cameraExecutor = Executors.newSingleThreadExecutor()
@@ -59,7 +61,8 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
 
         findViewById<Button>(R.id.takePhoto).setOnClickListener {
             val fileName = System.currentTimeMillis().toString() + ".jpeg"
-            val outputFileOptions = ImageCapture.OutputFileOptions.Builder(File(photoPath + File.separator + fileName)).build()
+            val file = File(photoPath + File.separator + fileName)
+            val outputFileOptions = ImageCapture.OutputFileOptions.Builder(file).build()
             imageCapture.takePicture(outputFileOptions, cameraExecutor, object : OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                     Log.d("PHOTO", "Фото успешно сохранено в $photoPath")
@@ -86,10 +89,10 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
 
     private fun bindPreview(cameraProvider : ProcessCameraProvider) {
 
-        var preview = Preview.Builder()
+        val preview = Preview.Builder()
             .build()
 
-        var cameraSelector : CameraSelector = CameraSelector.Builder()
+        val cameraSelector : CameraSelector = CameraSelector.Builder()
             .requireLensFacing(CameraSelector.LENS_FACING_BACK)
             .build()
 
@@ -103,7 +106,7 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
     private fun prepareFile(name: String): MultipartBody.Part {
         val file = File("/storage/emulated/0/Pictures/DIFA/$name")
 
-        val requestFile = RequestBody.create(MultipartBody.FORM, file)
+        val requestFile = RequestBody.create(MediaType.parse("image/*"), file)
 
         return MultipartBody.Part.createFormData("image", file.name, requestFile)
     }

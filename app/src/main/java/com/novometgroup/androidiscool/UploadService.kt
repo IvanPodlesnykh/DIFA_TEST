@@ -4,15 +4,16 @@ import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Retrofit
+import retrofit2.converter.scalars.ScalarsConverterFactory
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
 
-const val baseServerUrl = "http://172.16.30.75:80/"
+const val baseServerUrl = "http://192.168.31.18/"
 interface UploadService {
 
     @Multipart
-    @POST("/test")
+    @POST("/Test")
     fun postImage(@Part image: MultipartBody.Part): Call<ResponseBody>
 
 }
@@ -20,5 +21,7 @@ fun getUploadService(): UploadService {
     return Retrofit.Builder()
         .baseUrl(baseServerUrl)
         .client(getUnsafeOkHttpClient())
-        .build().create(UploadService::class.java)
+        .addConverterFactory(ScalarsConverterFactory.create())
+        .build()
+        .create(UploadService::class.java)
 }

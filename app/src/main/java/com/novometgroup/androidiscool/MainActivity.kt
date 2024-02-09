@@ -1,13 +1,8 @@
 package com.novometgroup.androidiscool
 
 import android.content.Intent
-import android.database.Observable
-import android.hardware.Camera
+import android.content.pm.PackageManager
 import android.os.Bundle
-import android.widget.Button
-import android.widget.ProgressBar
-import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import com.novometgroup.androidiscool.databinding.ActivityMainBinding
@@ -24,7 +19,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
-         super.onCreate(savedInstanceState)
+        super.onCreate(savedInstanceState)
+
+        if(checkSelfPermission(android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
+            requestPermissions(arrayOf(android.Manifest.permission.CAMERA), 100)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
 
@@ -73,7 +71,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         //Отправка файла на сервер
-        val fileName = "1707380393870.jpeg"
+        val fileName = "cat.jpeg"
 
         val file = File("/storage/emulated/0/Pictures/DIFA/$fileName")
 
