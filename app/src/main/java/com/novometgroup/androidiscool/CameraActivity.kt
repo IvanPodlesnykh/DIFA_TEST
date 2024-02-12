@@ -7,6 +7,7 @@ import android.util.Log
 import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCapture.OnImageSavedCallback
@@ -32,6 +33,8 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
     private lateinit var cameraView: PreviewView
 
     private lateinit var imageCapture: ImageCapture
+
+    private lateinit var camera: Camera
 
     private val photoPath = "/storage/emulated/0/Pictures/DIFA"
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -85,6 +88,14 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
 
             })
         }
+
+        findViewById<Button>(R.id.zoom_in).setOnClickListener {
+            camera.cameraControl.setLinearZoom(1.0F)
+        }
+
+        findViewById<Button>(R.id.zoom_out).setOnClickListener {
+            camera.cameraControl.setLinearZoom(0.0F)
+        }
     }
 
     private fun bindPreview(cameraProvider : ProcessCameraProvider) {
@@ -100,7 +111,7 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
 
         cameraProvider.unbindAll()
 
-        var camera = cameraProvider.bindToLifecycle(this, cameraSelector, imageCapture, preview)
+        camera = cameraProvider.bindToLifecycle(this, cameraSelector, imageCapture, preview)
     }
 
     private fun prepareFile(name: String): MultipartBody.Part {
