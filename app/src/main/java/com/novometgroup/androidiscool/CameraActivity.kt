@@ -4,10 +4,13 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.KeyEvent
 import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCapture.OnImageSavedCallback
 import androidx.camera.core.ImageCaptureException
@@ -23,6 +26,7 @@ import retrofit2.Callback
 import retrofit2.Response
 import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
 
@@ -32,9 +36,21 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
 
     private lateinit var imageCapture: ImageCapture
 
+    private lateinit var flashModeButton: Button
+
+    private lateinit var camera: Camera
+
+    private var torch = false
+
+    private var flashModeOn = true
+
+    private var mediumExposure: Int = 0
+
     private val photoPath = "/storage/emulated/0/Pictures/DIFA"
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        flashModeButton = findViewById(R.id.flash_mode)
 
         handler = Handler(Looper.getMainLooper())
 
@@ -44,8 +60,33 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
 
         cameraView = findViewById(R.id.camera_view)
 
-        imageCapture = ImageCapture.Builder()
-            .build()
+        imageCapture = prepareImageCapture(ImageCapture.FLASH_MODE_ON)
+
+        flashModeButton.setOnClickListener {
+            if(flashModeOn) {
+                flashModeOn = false
+                imageCapture = prepareImageCapture(ImageCapture.FLASH_MODE_OFF)
+                flashModeButton.text = "flash mode OFF"
+
+                val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+
+                cameraProviderFuture.addListener({
+                    val cameraProvider = cameraProviderFuture.get()
+                    bindPreview(cameraProvider, imageCapture)
+                }, ContextCompat.getMainExecutor(this))
+            } else {
+                flashModeOn = true
+                imageCapture = prepareImageCapture(ImageCapture.FLASH_MODE_ON)
+                flashModeButton.text = "flash mode ON"
+
+                val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+
+                cameraProviderFuture.addListener({
+                    val cameraProvider = cameraProviderFuture.get()
+                    bindPreview(cameraProvider, imageCapture)
+                }, ContextCompat.getMainExecutor(this))
+            }
+        }
 
         val cameraExecutor = Executors.newSingleThreadExecutor()
 
@@ -53,11 +94,10 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
 
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
-            bindPreview(cameraProvider)
+            bindPreview(cameraProvider, imageCapture)
         }, ContextCompat.getMainExecutor(this))
 
-
-        findViewById<Button>(R.id.takePhoto).setOnClickListener {
+        findViewById<Button>(R.id.take_photo).setOnClickListener {
             val fileName = System.currentTimeMillis().toString() + ".jpeg"
             val outputFileOptions = ImageCapture.OutputFileOptions.Builder(File(photoPath + File.separator + fileName)).build()
             imageCapture.takePicture(outputFileOptions, cameraExecutor, object : OnImageSavedCallback {
@@ -75,16 +115,74 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
                     Log.d("PHOTO", "Ошибка, фото не сохранено! Исключение: $exception")
                     this@CameraActivity.runOnUiThread {
                         Toast.makeText(this@CameraActivity,
-                            "Ошибка! Фото не сохранено!",
+                            "Ошибка! Фото не сохранено! ${exception}",
                             Toast.LENGTH_SHORT).show()
                     }
                 }
 
             })
         }
+
+        findViewById<Button>(R.id.zoom_in).setOnClickListener {
+            camera.cameraControl.setLinearZoom(camera.cameraInfo.zoomState.value!!.linearZoom + 0.1F)
+        }
+
+        findViewById<Button>(R.id.zoom_out).setOnClickListener {
+
+            camera.cameraControl.setLinearZoom(camera.cameraInfo.zoomState.value!!.linearZoom - 0.1F)
+        }
+
+        cameraView.setOnTouchListener { _, event ->
+            val meteringPoint = cameraView.meteringPointFactory
+                .createPoint(event.x, event.y)
+            val action = FocusMeteringAction.Builder(meteringPoint)
+                //.setAutoCancelDuration(3, TimeUnit.SECONDS)
+                .disableAutoCancel()
+                .build()
+
+            val result = camera.cameraControl.startFocusAndMetering(action)
+
+            result.addListener({
+            }, ContextCompat.getMainExecutor(this@CameraActivity))
+
+            Log.i("TOUCH", "Screen touch event")
+
+            cameraView.performClick()
+        }
+
+        findViewById<Button>(R.id.toggle_torch).setOnClickListener {
+            camera.cameraControl.enableTorch(!torch)
+            torch = !torch
+        }
+
+        findViewById<Button>(R.id.exposure_up).setOnClickListener {
+            mediumExposure += 1
+            camera.cameraControl.setExposureCompensationIndex(mediumExposure)
+        }
+
+        findViewById<Button>(R.id.exposure_down).setOnClickListener {
+            mediumExposure -= 1
+            camera.cameraControl.setExposureCompensationIndex(mediumExposure)
+        }
     }
 
-    private fun bindPreview(cameraProvider : ProcessCameraProvider) {
+    override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
+        val action = event?.action
+        when(event?.keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> if(action == KeyEvent.ACTION_DOWN)  {
+                camera.cameraControl.setLinearZoom(camera.cameraInfo.zoomState.value!!.linearZoom + 0.1F)
+                return true
+            }
+            KeyEvent.KEYCODE_VOLUME_DOWN -> if(action == KeyEvent.ACTION_DOWN) {
+                camera.cameraControl.setLinearZoom(camera.cameraInfo.zoomState.value!!.linearZoom - 0.1F)
+                return true
+            }
+            else -> return super.dispatchKeyEvent(event)
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    private fun bindPreview(cameraProvider : ProcessCameraProvider, imageCapture: ImageCapture) {
 
         var preview = Preview.Builder()
             .build()
@@ -97,7 +195,10 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
 
         cameraProvider.unbindAll()
 
-        var camera = cameraProvider.bindToLifecycle(this, cameraSelector, imageCapture, preview)
+        camera = cameraProvider.bindToLifecycle(this, cameraSelector, imageCapture, preview)
+
+        val range = camera.cameraInfo.exposureState.exposureCompensationRange
+        mediumExposure = (range.lower + range.upper) / 2
     }
 
     private fun prepareFile(name: String): MultipartBody.Part {
@@ -121,5 +222,11 @@ class CameraActivity : AppCompatActivity(R.layout.activity_camera) {
             }
 
         })
+    }
+
+    private fun prepareImageCapture(flashMode: Int): ImageCapture  {
+        return ImageCapture.Builder()
+            .setFlashMode(flashMode)
+            .build()
     }
 }
